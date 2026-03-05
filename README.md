@@ -1,6 +1,6 @@
 # Splitwise CLI
 
-[![CI](https://github.com/oristides/splitwisecli/actions/workflows/ci.yml/badge.svg)](https://github.com/oristides/splitwisecli/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/oriel/splitwisecli/graph/badge.svg)](https://codecov.io/gh/oriel/splitwisecli)
+[![CI](https://github.com/oristides/splitwisecli/actions/workflows/ci.yml/badge.svg)](https://github.com/oristides/splitwisecli/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/oristides/splitwisecli/graph/badge.svg)](https://codecov.io/gh/oristides/splitwisecli)
 
 A command-line interface for [Splitwise](https://www.splitwise.com/) — the app that splits bills and tracks shared expenses between friends. Use it to divide receipts, split dinner checks, and see who owes whom — all from your terminal.
 
@@ -25,7 +25,7 @@ A command-line interface for [Splitwise](https://www.splitwise.com/) — the app
 ### One-liner (no Go required)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/oriel/splitwisecli/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/oristides/splitwisecli/main/install.sh | sh
 ```
 
 Installs to `~/.local/bin` by default. Add to PATH if needed: `export PATH="$PATH:$HOME/.local/bin"`
@@ -33,7 +33,7 @@ Installs to `~/.local/bin` by default. Add to PATH if needed: `export PATH="$PAT
 ### With Go installed
 
 ```bash
-go install github.com/oriel/splitwisecli@latest
+go install github.com/oristides/splitwisecli@latest
 ```
 
 Requires Go 1.21+ and `$GOPATH/bin` in your PATH.
@@ -41,7 +41,7 @@ Requires Go 1.21+ and `$GOPATH/bin` in your PATH.
 ### From source
 `
 ```bash
-git clone https://github.com/oriel/splitwisecli.git
+git clone https://github.com/oristides/splitwisecli.git
 cd splitwisecli
 go mod tidy
 go build -o splitwisecli
