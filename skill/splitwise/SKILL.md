@@ -2,7 +2,7 @@
 name: splitwise-cli
 description: "Use when helping with the Splitwise CLI (splitwisecli) — splitting bills, tracking shared expenses between friends, recording expenses, settling debts, or checking balances. Use for 'Splitwise', 'split receipts', 'split bills', 'who owes whom', 'expense tracking', 'splitwisecli', 'divide costs', or 'settle up'."
 metadata:
-  version: 1.0.0
+  version: 1.0.1
 ---
 
 # Splitwise CLI
@@ -19,10 +19,11 @@ Credentials from https://secure.splitwise.com/apps (Consumer Key, Consumer Secre
 # No Go required
 curl -fsSL https://raw.githubusercontent.com/oristides/splitwisecli/main/install.sh | sh
 ```
+ 
+## Enviroment variables setting
+Ask th user to execute this or ask the user this values and do it yourself  or you can
 
-Ask th user to execute this or ask the user this values and do it yourself.
-
-``bash
+```bash
 export SPLITWISE_CONSUMER_KEY=your_consumer_key_here
 export SPLITWISE_CONSUMER_SECRET=your_consumer_secret_here
 export SPLITWISE_API_KEY=your_api_key_here 
