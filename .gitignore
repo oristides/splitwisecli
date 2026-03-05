@@ -33,6 +33,8 @@ Thumbs.db
 .env.local
 .env.*.local
 
+.env
+
 # Build output
 /dist/
 /build/

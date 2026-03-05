@@ -516,16 +516,18 @@ type CommentResponse struct {
 }
 
 type CreateExpenseRequest struct {
-	GroupID        int                    `json:"group_id,omitempty"`
-	Description    string                 `json:"description"`
-	Cost           string                 `json:"cost"`
-	CurrencyCode   string                 `json:"currency_code,omitempty"`
-	Date           string                 `json:"date,omitempty"`
-	Details        string                 `json:"details,omitempty"`
-	RepeatInterval string                 `json:"repeat_interval,omitempty"`
-	CategoryID     int                    `json:"category_id,omitempty"`
-	SplitEqually   bool                   `json:"split_equally,omitempty"`
-	Users          []ExpenseUserShare     `json:"users,omitempty"`
+	GroupID        int                `json:"group_id,omitempty"`
+	FriendshipID   int                `json:"friendship_id,omitempty"`
+	Description    string             `json:"description"`
+	Cost           string             `json:"cost"`
+	CurrencyCode   string             `json:"currency_code,omitempty"`
+	Date           string             `json:"date,omitempty"`
+	Details        string             `json:"details,omitempty"`
+	RepeatInterval string             `json:"repeat_interval,omitempty"`
+	CategoryID     int                `json:"category_id,omitempty"`
+	SplitEqually   bool               `json:"split_equally,omitempty"`
+	Payment        bool               `json:"payment,omitempty"`
+	Users          []ExpenseUserShare `json:"users,omitempty"`
 }
 
 type ExpenseUserShare struct {

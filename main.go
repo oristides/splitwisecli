@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/oriel/splitwisecli/internal/client"
 	"github.com/oriel/splitwisecli/internal/config"
+	"github.com/oriel/splitwisecli/internal/expense"
 	"github.com/spf13/cobra"
 )
 
@@ -51,6 +54,7 @@ func main() {
 	rootCmd.AddCommand(userCmd)
 	rootCmd.AddCommand(groupCmd)
 	rootCmd.AddCommand(friendCmd)
+	rootCmd.AddCommand(balanceCmd)
 	rootCmd.AddCommand(expenseCmd)
 	rootCmd.AddCommand(commentCmd)
 	rootCmd.AddCommand(notificationCmd)
@@ -60,6 +64,21 @@ func main() {
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func resolveGroupID(val string) (int, error) {
+	if val == "" {
+		return 0, nil
+	}
+	resp, err := splitwise.GetGroups()
+	if err != nil {
+		return 0, fmt.Errorf("failed to fetch groups: %w", err)
+	}
+	groups := make([]expense.GroupInfo, len(resp.Groups))
+	for i, g := range resp.Groups {
+		groups[i] = expense.GroupInfo{ID: g.ID, Name: g.Name}
+	}
+	return expense.FindGroupID(val, groups)
 }
 
 func printJSON(data interface{}) {
@@ -159,12 +178,19 @@ var groupListCmd = &cobra.Command{
 }
 
 var groupGetCmd = &cobra.Command{
-	Use:   "get [group_id]",
+	Use:   "get [group_id_or_name]",
 	Short: "Get group details",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		var id int
-		fmt.Sscanf(args[0], "%d", &id)
+		id, err := resolveGroupID(args[0])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		if id == 0 {
+			fmt.Fprintln(os.Stderr, "Error: group ID or name required")
+			os.Exit(1)
+		}
 		resp, err := splitwise.GetGroup(id)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -232,6 +258,140 @@ func init() {
 }
 
 // ============================================================================
+// Balance Commands
+// ============================================================================
+
+var balanceCmd = &cobra.Command{
+	Use:   "balance",
+	Short: "Show total balance with friends or groups",
+	Long:  "Display what you owe or are owed. Positive = they owe you. Negative = you owe them.",
+	Run: func(cmd *cobra.Command, args []string) {
+		if balanceFriendID != 0 {
+			// Balance with specific friend
+			resp, err := splitwise.GetFriends()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			var found *client.Friend
+			for i := range resp.Friends {
+				if resp.Friends[i].ID == balanceFriendID {
+					found = &resp.Friends[i]
+					break
+				}
+			}
+			if found == nil {
+				fmt.Fprintf(os.Stderr, "Error: friend %d not found\n", balanceFriendID)
+				os.Exit(1)
+			}
+			if outputJSON {
+				printJSON(map[string]interface{}{"friend": found})
+			} else {
+				fmt.Printf("Balance with %s %s:\n", found.FirstName, found.LastName)
+				if len(found.Balance) == 0 {
+					fmt.Println("  You're all settled up.")
+				} else {
+					for _, b := range found.Balance {
+						fmt.Printf("  %s %s\n", b.Amount, b.CurrencyCode)
+					}
+				}
+			}
+			return
+		}
+
+		if balanceGroupIDStr != "" {
+			// Balance in group
+			gid, err := resolveGroupID(balanceGroupIDStr)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			if gid == 0 {
+				fmt.Fprintln(os.Stderr, "Error: --group requires a group ID or name")
+				os.Exit(1)
+			}
+			me, err := splitwise.GetCurrentUser()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			grp, err := splitwise.GetGroup(gid)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			// Build ID -> name map
+			idToName := make(map[int]string)
+			for _, m := range grp.Group.Members {
+				name := m.FirstName + " " + m.LastName
+				if m.ID == me.User.ID {
+					name = "You"
+				}
+				idToName[m.ID] = name
+			}
+			if outputJSON {
+				printJSON(grp)
+			} else {
+				fmt.Printf("Balances in %s:\n", grp.Group.Name)
+				debts := grp.Group.SimplifiedDebts
+				if len(debts) == 0 {
+					debts = grp.Group.OriginalDebts
+				}
+				if len(debts) == 0 {
+					fmt.Println("  Everyone is settled up.")
+				} else {
+					for _, d := range debts {
+						fromName := idToName[d.From]
+						if fromName == "" {
+							fromName = fmt.Sprintf("User %d", d.From)
+						}
+						toName := idToName[d.To]
+						if toName == "" {
+							toName = fmt.Sprintf("User %d", d.To)
+						}
+						fmt.Printf("  %s owes %s: %s %s\n", fromName, toName, d.Amount, d.CurrencyCode)
+					}
+				}
+			}
+			return
+		}
+
+		// All friend balances
+		resp, err := splitwise.GetFriends()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		if outputJSON {
+			printJSON(resp)
+		} else {
+			fmt.Println("Balance with friends:")
+			fmt.Println("(Positive = they owe you. Negative = you owe them)")
+			fmt.Println()
+			for _, f := range resp.Friends {
+				if len(f.Balance) == 0 {
+					fmt.Printf("  %s %s: settled up\n", f.FirstName, f.LastName)
+				} else {
+					for _, b := range f.Balance {
+						fmt.Printf("  %s %s [%d]: %s %s\n", f.FirstName, f.LastName, f.ID, b.Amount, b.CurrencyCode)
+					}
+				}
+			}
+		}
+	},
+}
+
+var (
+	balanceFriendID   int
+	balanceGroupIDStr string
+)
+
+func init() {
+	balanceCmd.Flags().IntVarP(&balanceFriendID, "friend", "f", 0, "Balance with specific friend (user ID)")
+	balanceCmd.Flags().StringVarP(&balanceGroupIDStr, "group", "g", "", "Balances in a group (ID or name)")
+}
+
+// ============================================================================
 // Expense Commands
 // ============================================================================
 
@@ -245,8 +405,15 @@ var expenseListCmd = &cobra.Command{
 	Short: "List expenses",
 	Run: func(cmd *cobra.Command, args []string) {
 		params := make(map[string]string)
-		if groupID != 0 {
-			params["group_id"] = fmt.Sprintf("%d", groupID)
+		if groupIDStr != "" {
+			gid, err := resolveGroupID(groupIDStr)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			if gid != 0 {
+				params["group_id"] = fmt.Sprintf("%d", gid)
+			}
 		}
 		if friendID != 0 {
 			params["friend_id"] = fmt.Sprintf("%d", friendID)
@@ -309,13 +476,129 @@ var expenseCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new expense",
 	Run: func(cmd *cobra.Command, args []string) {
+		// Resolve group ID (name or number)
+		groupID := 0
+		if groupIDStr != "" {
+			var err error
+			groupID, err = resolveGroupID(groupIDStr)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+		}
+
 		req := &client.CreateExpenseRequest{
 			GroupID:       groupID,
 			Description:   expenseDescription,
 			Cost:          expenseCost,
 			CurrencyCode:  expenseCurrency,
 			Date:          expenseDate,
-			SplitEqually: splitEqually,
+			SplitEqually:  splitEqually,
+		}
+
+		// Expense with friend (who paid + split)
+		if expenseFriendID != 0 {
+			me, err := splitwise.GetCurrentUser()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error getting current user: %v\n", err)
+				os.Exit(1)
+			}
+			paidByID, err := expense.ResolvePaidBy(expensePaidBy, me.User.ID, expenseFriendID)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			cost, err := strconv.ParseFloat(expenseCost, 64)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: invalid cost: %v\n", err)
+				os.Exit(1)
+			}
+			var myOwed, friendOwed float64
+			if expenseSplit != "" {
+				parts := strings.Split(expenseSplit, ",")
+				if len(parts) != 2 {
+					fmt.Fprintln(os.Stderr, "Error: --split must be 'myShare,friendShare' (e.g. 50,50)")
+					os.Exit(1)
+				}
+				myOwed, _ = strconv.ParseFloat(strings.TrimSpace(parts[0]), 64)
+				friendOwed, _ = strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
+				sum := myOwed + friendOwed
+				if sum < cost-0.01 || sum > cost+0.01 {
+					fmt.Fprintf(os.Stderr, "Error: split amounts (%.2f + %.2f) must equal cost (%.2f)\n", myOwed, friendOwed, cost)
+					os.Exit(1)
+				}
+			} else {
+				// --equal or default: 50/50
+				myOwed = cost / 2
+				friendOwed = cost / 2
+			}
+			req.GroupID = 0
+			req.SplitEqually = false
+			// paid-by: "me" or empty = I paid, else that user ID paid
+			iPaid := paidByID == me.User.ID
+			if iPaid {
+				req.Users = []client.ExpenseUserShare{
+					{UserID: me.User.ID, PaidShare: expenseCost, OwedShare: fmt.Sprintf("%.2f", myOwed)},
+					{UserID: expenseFriendID, PaidShare: "0", OwedShare: fmt.Sprintf("%.2f", friendOwed)},
+				}
+			} else {
+				// Friend paid
+				req.Users = []client.ExpenseUserShare{
+					{UserID: me.User.ID, PaidShare: "0", OwedShare: fmt.Sprintf("%.2f", myOwed)},
+					{UserID: expenseFriendID, PaidShare: expenseCost, OwedShare: fmt.Sprintf("%.2f", friendOwed)},
+				}
+			}
+		}
+
+		// Group expense with --paid-by (specific member paid)
+		if groupID != 0 && splitEqually && expensePaidBy != "" {
+			me, err := splitwise.GetCurrentUser()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error getting current user: %v\n", err)
+				os.Exit(1)
+			}
+			paidByID, err := expense.ResolvePaidBy(expensePaidBy, me.User.ID, 0)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			if paidByID == me.User.ID {
+				// I paid - keep default split_equally
+			} else {
+				// Someone else in the group paid - must use explicit users
+				grp, err := splitwise.GetGroup(groupID)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error getting group: %v\n", err)
+					os.Exit(1)
+				}
+				// Verify payer is in group
+				var payerInGroup bool
+				for _, m := range grp.Group.Members {
+					if m.ID == paidByID {
+						payerInGroup = true
+						break
+					}
+				}
+				if !payerInGroup {
+					fmt.Fprintf(os.Stderr, "Error: user %d (--paid-by) is not a member of group %d\n", paidByID, groupID)
+					os.Exit(1)
+				}
+				cost, _ := strconv.ParseFloat(expenseCost, 64)
+				share := cost / float64(len(grp.Group.Members))
+				req.SplitEqually = false
+				req.Users = make([]client.ExpenseUserShare, 0, len(grp.Group.Members))
+				for _, m := range grp.Group.Members {
+					paid := "0"
+					if m.ID == paidByID {
+						paid = expenseCost
+					}
+					req.Users = append(req.Users, client.ExpenseUserShare{
+						UserID:    m.ID,
+						PaidShare: paid,
+						OwedShare: fmt.Sprintf("%.2f", share),
+					})
+				}
+			}
 		}
 
 		resp, err := splitwise.CreateExpense(req)
@@ -331,6 +614,118 @@ var expenseCreateCmd = &cobra.Command{
 				printJSON(resp.Errors)
 			} else {
 				fmt.Println("Expense created successfully!")
+				for _, e := range resp.Expenses {
+					fmt.Printf("  ID: %d\n", e.ID)
+				}
+			}
+		}
+	},
+}
+
+var expenseSettleCmd = &cobra.Command{
+	Use:   "settle",
+	Short: "Settle up / record a payment between you and a friend (or in a group)",
+	Long:  "Creates a payment expense to settle a debt. Use --friend for friend settlement, --group for group.",
+	Run: func(cmd *cobra.Command, args []string) {
+		if settleAmount == "" {
+			fmt.Fprintln(os.Stderr, "Error: --amount is required")
+			os.Exit(1)
+		}
+		if settleFriendID == 0 && settleGroupIDStr == "" {
+			fmt.Fprintln(os.Stderr, "Error: --friend or --group is required")
+			os.Exit(1)
+		}
+		if settleFriendID != 0 && settleGroupIDStr != "" {
+			fmt.Fprintln(os.Stderr, "Error: use --friend OR --group, not both")
+			os.Exit(1)
+		}
+
+		me, err := splitwise.GetCurrentUser()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error getting current user: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Who is paying (settling their debt)
+		paidByID, err := expense.ResolvePaidBy(settlePaidBy, me.User.ID, settleFriendID)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Payer gives money to receiver. For payment: payer has paid_share=amount, owed_share=amount; receiver has paid_share=0, owed_share=0
+		receiverID := settleFriendID
+		if settleFriendID != 0 {
+			if paidByID == settleFriendID {
+				receiverID = me.User.ID
+			}
+		} else {
+			receiverID = settleToUserID
+			if receiverID == 0 {
+				fmt.Fprintln(os.Stderr, "Error: --group requires --to <user_id> (who receives the payment)")
+				os.Exit(1)
+			}
+			if paidByID == receiverID {
+				fmt.Fprintln(os.Stderr, "Error: payer and receiver must be different")
+				os.Exit(1)
+			}
+		}
+
+		req := &client.CreateExpenseRequest{
+			Description:  settleDescription,
+			Cost:         settleAmount,
+			CurrencyCode: settleCurrency,
+			Payment:      true,
+			Users: []client.ExpenseUserShare{
+				{UserID: paidByID, PaidShare: settleAmount, OwedShare: settleAmount},
+				{UserID: receiverID, PaidShare: "0", OwedShare: "0"},
+			},
+		}
+
+		if settleFriendID != 0 {
+			req.GroupID = 0
+		} else {
+			gid, err := resolveGroupID(settleGroupIDStr)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			req.GroupID = gid
+			// For group: need all members, payer pays amount, receiver gets it, others 0/0
+			grp, err := splitwise.GetGroup(gid)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error getting group: %v\n", err)
+				os.Exit(1)
+			}
+			req.Users = make([]client.ExpenseUserShare, 0, len(grp.Group.Members))
+			for _, m := range grp.Group.Members {
+				paid, owed := "0", "0"
+				if m.ID == paidByID {
+					paid, owed = settleAmount, settleAmount
+				} else if m.ID == receiverID {
+					paid, owed = "0", "0"
+				}
+				req.Users = append(req.Users, client.ExpenseUserShare{
+					UserID:    m.ID,
+					PaidShare: paid,
+					OwedShare: owed,
+				})
+			}
+		}
+
+		resp, err := splitwise.CreateExpense(req)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		if outputJSON {
+			printJSON(resp)
+		} else {
+			if resp.Errors != nil && len(resp.Errors) > 0 {
+				fmt.Println("Errors:")
+				printJSON(resp.Errors)
+			} else {
+				fmt.Println("Payment recorded successfully!")
 				for _, e := range resp.Expenses {
 					fmt.Printf("  ID: %d\n", e.ID)
 				}
@@ -366,7 +761,7 @@ var expenseDeleteCmd = &cobra.Command{
 
 // Expense flags
 var (
-	groupID             int
+	groupIDStr          string
 	friendID            int
 	limit               int
 	datedAfter          string
@@ -376,25 +771,50 @@ var (
 	expenseCurrency     string
 	expenseDate         string
 	splitEqually        bool
+	expenseFriendID     int
+	expenseSplit        string
+	expensePaidBy       string
+
+	// settle flags
+	settleFriendID     int
+	settleGroupIDStr   string
+	settleAmount       string
+	settleCurrency     string
+	settlePaidBy       string
+	settleDescription  string
+	settleToUserID     int
 )
 
 func init() {
 	// expense list flags
-	expenseListCmd.Flags().IntVarP(&groupID, "group", "g", 0, "Filter by group ID")
+	expenseListCmd.Flags().StringVarP(&groupIDStr, "group", "g", "", "Filter by group ID or name")
 	expenseListCmd.Flags().IntVarP(&friendID, "friend", "f", 0, "Filter by friend ID")
 	expenseListCmd.Flags().IntVarP(&limit, "limit", "l", 20, "Number of expenses to return")
 	expenseListCmd.Flags().StringVar(&datedAfter, "after", "", "Filter expenses after date (ISO8601)")
 	expenseListCmd.Flags().StringVar(&datedBefore, "before", "", "Filter expenses before date (ISO8601)")
 
 	// expense create flags
-	expenseCreateCmd.Flags().IntVarP(&groupID, "group", "g", 0, "Group ID")
+	expenseCreateCmd.Flags().StringVarP(&groupIDStr, "group", "g", "", "Group ID or name")
+	expenseCreateCmd.Flags().IntVarP(&expenseFriendID, "friend", "f", 0, "Friend's user ID (for expense between you and a friend; you paid, they owe you)")
 	expenseCreateCmd.Flags().StringVarP(&expenseDescription, "description", "d", "", "Expense description (required)")
 	expenseCreateCmd.Flags().StringVarP(&expenseCost, "cost", "c", "", "Cost (required)")
 	expenseCreateCmd.Flags().StringVarP(&expenseCurrency, "currency", "y", "USD", "Currency code")
 	expenseCreateCmd.Flags().StringVarP(&expenseDate, "date", "t", "", "Date (ISO8601)")
-	expenseCreateCmd.Flags().BoolVarP(&splitEqually, "equal", "e", false, "Split equally among all members")
+	expenseCreateCmd.Flags().BoolVarP(&splitEqually, "equal", "e", false, "Split equally among all members (group) or 50/50 (friend)")
+	expenseCreateCmd.Flags().StringVar(&expenseSplit, "split", "", "Custom split: 'myShare,friendShare' (e.g. 60,40) - use with --friend")
+	expenseCreateCmd.Flags().StringVar(&expensePaidBy, "paid-by", "", "Who paid: 'me', 'friend' (with --friend), or user ID. Default: me")
+
+	// expense settle flags
+	expenseSettleCmd.Flags().IntVarP(&settleFriendID, "friend", "f", 0, "Friend's user ID (for friend settlement)")
+	expenseSettleCmd.Flags().StringVarP(&settleGroupIDStr, "group", "g", "", "Group ID or name (for group settlement)")
+	expenseSettleCmd.Flags().StringVarP(&settleAmount, "amount", "a", "", "Amount to settle (required)")
+	expenseSettleCmd.Flags().StringVarP(&settleCurrency, "currency", "y", "USD", "Currency code")
+	expenseSettleCmd.Flags().StringVar(&settlePaidBy, "paid-by", "", "Who is paying: 'me' or 'friend' (default: me = you pay them back)")
+	expenseSettleCmd.Flags().StringVar(&settleDescription, "description", "Payment", "Description for the settlement")
+	expenseSettleCmd.Flags().IntVar(&settleToUserID, "to", 0, "User ID who receives (required with --group)")
 
 	expenseCmd.AddCommand(expenseListCmd)
+	expenseCmd.AddCommand(expenseSettleCmd)
 	expenseCmd.AddCommand(expenseGetCmd)
 	expenseCmd.AddCommand(expenseCreateCmd)
 	expenseCmd.AddCommand(expenseDeleteCmd)
