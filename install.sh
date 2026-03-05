@@ -1,10 +1,10 @@
 #!/usr/bin/env sh
 # Install splitwisecli from GitHub releases
-# Usage: curl -fsSL https://raw.githubusercontent.com/oriel/splitwisecli/main/install.sh | sh
+# Usage: curl -fsSL https://raw.githubusercontent.com/oristides/splitwisecli/main/install.sh | sh
 
 set -e
 
-REPO="oriel/splitwisecli"
+REPO="oristides/splitwisecli"
 BINARY="splitwisecli"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
 
@@ -38,7 +38,17 @@ LATEST_URL=$(curl -s "https://api.github.com/repos/${REPO}/releases/latest" | gr
 
 if [ -z "$LATEST_URL" ]; then
   echo "No release found for ${OS}/${ARCH}"
-  echo "Check https://github.com/${REPO}/releases"
+  echo ""
+  echo "This usually means no GitHub release has been published yet."
+  echo "Install with Go instead:"
+  echo "  go install github.com/${REPO}@latest"
+  echo ""
+  echo "Or build from source:"
+  echo "  git clone https://github.com/${REPO}.git"
+  echo "  cd splitwisecli && go build -o splitwisecli"
+  echo ""
+  echo "To publish releases, tag a version and run: goreleaser release"
+  echo "See: https://github.com/${REPO}/releases"
   exit 1
 fi
 

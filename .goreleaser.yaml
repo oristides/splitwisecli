@@ -41,5 +41,5 @@ checksum:
 
 release:
   github:
-    owner: oriel
+    owner: oristides
     name: splitwisecli
