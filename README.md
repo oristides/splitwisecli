@@ -1,6 +1,6 @@
 # Splitwise CLI
 
-[![CI](https://github.com/oriel/splitwisecli/actions/workflows/ci.yml/badge.svg)](https://github.com/oriel/splitwisecli/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/oriel/splitwisecli/graph/badge.svg)](https://codecov.io/gh/oriel/splitwisecli)
+[![CI](https://github.com/oristides/splitwisecli/actions/workflows/ci.yml/badge.svg)](https://github.com/oriel/splitwisecli/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/oriel/splitwisecli/graph/badge.svg)](https://codecov.io/gh/oriel/splitwisecli)
 
 A command-line interface for [Splitwise](https://www.splitwise.com/) — the app that splits bills and tracks shared expenses between friends. Use it to divide receipts, split dinner checks, and see who owes whom — all from your terminal.
 
