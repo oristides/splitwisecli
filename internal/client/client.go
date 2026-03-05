@@ -201,6 +201,19 @@ func (c *Client) CreateExpense(expense *CreateExpenseRequest) (*ExpenseActionRes
 	return &resp, nil
 }
 
+func (c *Client) UpdateExpense(id int, expense *CreateExpenseRequest) (*ExpenseActionResponse, error) {
+	data, err := c.Post(fmt.Sprintf("/update_expense/%d", id), expense)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp ExpenseActionResponse
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+	return &resp, nil
+}
+
 func (c *Client) DeleteExpense(id int) (*DeleteResponse, error) {
 	data, err := c.Post(fmt.Sprintf("/delete_expense/%d", id), nil)
 	if err != nil {

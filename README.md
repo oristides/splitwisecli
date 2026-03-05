@@ -15,7 +15,7 @@ A command-line interface for [Splitwise](https://www.splitwise.com/) — the app
 - **User Management**: Get current user and other user info
 - **Group Management**: List groups, get group details
 - **Friend Management**: List friends and balances
-- **Expense Management**: List, create, get, and delete expenses
+- **Expense Management**: List, create, get, update, and delete expenses
 - **Comments**: Get and create comments on expenses
 - **Notifications**: View notifications
 - **Utilities**: List currencies and categories
@@ -190,6 +190,12 @@ splitwisecli expense list --friend 456 --limit 20
 # Get expense details (see who paid what, who owes what)
 splitwisecli expense get 789
 
+# Update an expense (fix mistakes - specify only fields to change)
+splitwisecli expense update 789 --description "Dinner at Mario's"
+splitwisecli expense update 789 --cost 95
+splitwisecli expense update 789 --currency EUR
+splitwisecli expense update 789 --split 40,60
+
 # Delete an expense
 splitwisecli expense delete 789
 
@@ -257,6 +263,7 @@ splitwisecli
 │   ├── list      # List expenses
 │   ├── get       # Get expense details
 │   ├── create    # Create expense (--friend or --group)
+│   ├── update    # Update expense (fix mistakes)
 │   ├── settle    # Record a payment / settle up
 │   └── delete    # Delete expense
 ├── comment       # Comment operations

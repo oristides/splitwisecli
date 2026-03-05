@@ -727,6 +727,102 @@ var expenseSettleCmd = &cobra.Command{
 	},
 }
 
+var expenseUpdateCmd = &cobra.Command{
+	Use:   "update [expense_id]",
+	Short: "Update an expense (fix mistakes)",
+	Long:  "Only include flags for fields you want to change. API accepts partial updates.",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		var id int
+		fmt.Sscanf(args[0], "%d", &id)
+
+		if updateDesc == "" && updateCost == "" && updateCurrency == "" && updateDate == "" && updateSplit == "" {
+			fmt.Fprintln(os.Stderr, "Error: specify at least one field to update (--description, --cost, --currency, --date, --split)")
+			os.Exit(1)
+		}
+
+		req := &client.CreateExpenseRequest{}
+		if updateDesc != "" {
+			req.Description = updateDesc
+		}
+		if updateCost != "" {
+			req.Cost = updateCost
+		}
+		if updateCurrency != "" {
+			req.CurrencyCode = updateCurrency
+		}
+		if updateDate != "" {
+			req.Date = updateDate
+		}
+
+		if updateSplit != "" {
+			exp, err := splitwise.GetExpense(id)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			cost, _ := strconv.ParseFloat(exp.Expense.Cost, 64)
+			if updateCost != "" {
+				cost, _ = strconv.ParseFloat(updateCost, 64)
+			}
+			myOwed, friendOwed, err := expense.ParseSplitPercentages(updateSplit, cost)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			if len(exp.Expense.Users) != 2 {
+				fmt.Fprintln(os.Stderr, "Error: --split only works for 2-person (friend) expenses")
+				os.Exit(1)
+			}
+			me, _ := splitwise.GetCurrentUser()
+			costStr := fmt.Sprintf("%.2f", cost)
+			req.Cost = costStr
+
+			var otherID int
+			for _, u := range exp.Expense.Users {
+				if u.UserID != me.User.ID {
+					otherID = u.UserID
+					break
+				}
+			}
+			var payerID int
+			for _, u := range exp.Expense.Users {
+				paid, _ := strconv.ParseFloat(u.PaidShare, 64)
+				if paid > 0 {
+					payerID = u.UserID
+					break
+				}
+			}
+
+			req.Users = []client.ExpenseUserShare{
+				{UserID: me.User.ID, PaidShare: "0", OwedShare: fmt.Sprintf("%.2f", myOwed)},
+				{UserID: otherID, PaidShare: "0", OwedShare: fmt.Sprintf("%.2f", friendOwed)},
+			}
+			if payerID == me.User.ID {
+				req.Users[0].PaidShare = costStr
+			} else {
+				req.Users[1].PaidShare = costStr
+			}
+		}
+
+		resp, err := splitwise.UpdateExpense(id, req)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		if outputJSON {
+			printJSON(resp)
+		} else {
+			if resp.Errors != nil && len(resp.Errors) > 0 {
+				fmt.Println("Errors:")
+				printJSON(resp.Errors)
+			} else {
+				fmt.Println("Expense updated successfully!")
+			}
+		}
+	},
+}
+
 var expenseDeleteCmd = &cobra.Command{
 	Use:   "delete [expense_id]",
 	Short: "Delete an expense",
@@ -776,6 +872,13 @@ var (
 	settlePaidBy       string
 	settleDescription  string
 	settleToUserID     int
+
+	// update flags
+	updateDesc     string
+	updateCost     string
+	updateCurrency string
+	updateDate     string
+	updateSplit    string
 )
 
 func init() {
@@ -806,7 +909,15 @@ func init() {
 	expenseSettleCmd.Flags().StringVar(&settleDescription, "description", "Payment", "Description for the settlement")
 	expenseSettleCmd.Flags().IntVar(&settleToUserID, "to", 0, "User ID who receives (required with --group)")
 
+	// expense update flags
+	expenseUpdateCmd.Flags().StringVarP(&updateDesc, "description", "d", "", "New description")
+	expenseUpdateCmd.Flags().StringVarP(&updateCost, "cost", "c", "", "New cost")
+	expenseUpdateCmd.Flags().StringVarP(&updateCurrency, "currency", "y", "", "New currency code")
+	expenseUpdateCmd.Flags().StringVarP(&updateDate, "date", "t", "", "New date (ISO8601)")
+	expenseUpdateCmd.Flags().StringVar(&updateSplit, "split", "", "New split as percentages (e.g. 40,60) - friend expenses only")
+
 	expenseCmd.AddCommand(expenseListCmd)
+	expenseCmd.AddCommand(expenseUpdateCmd)
 	expenseCmd.AddCommand(expenseSettleCmd)
 	expenseCmd.AddCommand(expenseGetCmd)
 	expenseCmd.AddCommand(expenseCreateCmd)
