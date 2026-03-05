@@ -107,22 +107,24 @@ splitwisecli balance --group "Trip to Japan"
 
 **Default: you paid** — If you omit `--paid-by`, you are assumed to have paid. Use `--paid-by friend` (or `--paid-by <user_id>`) when the friend paid.
 
+**Default: equal split** — With `--friend`, expenses split 50/50 by default. Use `--split a,b` only for custom splits.
+
 **I paid — split 50/50 (friend owes me half)**
 
 You paid $100 for dinner. You and your friend split it equally — they owe you $50.
 
 ```bash
-splitwisecli expense create --friend 456 --description "Dinner" --cost 100 --equal
-# Same thing, explicit:
+splitwisecli expense create --friend 456 --description "Dinner" --cost 100
+# Same (--equal is optional, it's the default):
 splitwisecli expense create --friend 456 -d "Dinner" -c 100 --equal --paid-by me
 ```
 
-**I paid the full amount — custom split**
+**I paid the full amount — custom split (percentages)**
 
-You paid $100. You had a smaller portion, so you owe $40 and your friend owes $60.
+You paid $120. You had 40% of the meal, friend had 60%. Percentages must sum to 100%.
 
 ```bash
-splitwisecli expense create --friend 456 -d "Restaurant" -c 100 --split 40,60
+splitwisecli expense create --friend 456 -d "Restaurant" -c 120 --split 40,60
 ```
 
 **I paid the full amount — they owe me everything**
@@ -130,7 +132,7 @@ splitwisecli expense create --friend 456 -d "Restaurant" -c 100 --split 40,60
 You covered $80 for groceries. Your friend will reimburse you the full amount.
 
 ```bash
-splitwisecli expense create --friend 456 -d "Groceries" -c 80 --split 0,80
+splitwisecli expense create --friend 456 -d "Groceries" -c 80 --split 0,100
 ```
 
 **Friend paid — split 50/50 (you owe them)**
@@ -142,10 +144,10 @@ splitwisecli expense create --friend 456 -d "Dinner" -c 100 --equal --paid-by fr
 # Or with user ID: --paid-by 456
 ```
 
-**Friend paid — custom split**
+**Friend paid — custom split (percentages)**
 
 ```bash
-splitwisecli expense create --friend 456 -d "Lunch" -c 60 --split 20,40 --paid-by friend
+splitwisecli expense create --friend 456 -d "Lunch" -c 60 --split 33,67 --paid-by friend
 ```
 
 ### Creating expenses in groups
@@ -273,6 +275,7 @@ splitwisecli
 
 ### Expense create flags
 
+- `--split <myPct,friendPct>`: Custom split as percentages (e.g. `40,60`). Must sum to 100. With `--cost 120`, 40% = $48, 60% = $72.
 - `--paid-by <me|friend|user_id>`: Who paid. **Default: you.** Use `--paid-by me` or omit; `--paid-by friend` (with `--friend`) = the friend paid; or `--paid-by 456` for a user ID.
 
 ## Development

@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"strconv"
-	"strings"
 
 	"github.com/oriel/splitwisecli/internal/client"
 	"github.com/oriel/splitwisecli/internal/config"
@@ -515,16 +514,10 @@ var expenseCreateCmd = &cobra.Command{
 			}
 			var myOwed, friendOwed float64
 			if expenseSplit != "" {
-				parts := strings.Split(expenseSplit, ",")
-				if len(parts) != 2 {
-					fmt.Fprintln(os.Stderr, "Error: --split must be 'myShare,friendShare' (e.g. 50,50)")
-					os.Exit(1)
-				}
-				myOwed, _ = strconv.ParseFloat(strings.TrimSpace(parts[0]), 64)
-				friendOwed, _ = strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
-				sum := myOwed + friendOwed
-				if sum < cost-0.01 || sum > cost+0.01 {
-					fmt.Fprintf(os.Stderr, "Error: split amounts (%.2f + %.2f) must equal cost (%.2f)\n", myOwed, friendOwed, cost)
+				var errSplit error
+				myOwed, friendOwed, errSplit = expense.ParseSplitPercentages(expenseSplit, cost)
+				if errSplit != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", errSplit)
 					os.Exit(1)
 				}
 			} else {
@@ -801,7 +794,7 @@ func init() {
 	expenseCreateCmd.Flags().StringVarP(&expenseCurrency, "currency", "y", "USD", "Currency code")
 	expenseCreateCmd.Flags().StringVarP(&expenseDate, "date", "t", "", "Date (ISO8601)")
 	expenseCreateCmd.Flags().BoolVarP(&splitEqually, "equal", "e", false, "Split equally among all members (group) or 50/50 (friend)")
-	expenseCreateCmd.Flags().StringVar(&expenseSplit, "split", "", "Custom split: 'myShare,friendShare' (e.g. 60,40) - use with --friend")
+	expenseCreateCmd.Flags().StringVar(&expenseSplit, "split", "", "Custom split as percentages: 'myPct,friendPct' (e.g. 40,60) - must sum to 100%%")
 	expenseCreateCmd.Flags().StringVar(&expensePaidBy, "paid-by", "", "Who paid: 'me', 'friend' (with --friend), or user ID. Default: me")
 
 	// expense settle flags
