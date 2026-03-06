@@ -39,3 +39,9 @@ Thumbs.db
 /dist/
 /build/
 bin/
+
+#venv
+.venv
+
+*.csv
+evals_outputs/

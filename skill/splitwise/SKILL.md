@@ -1,8 +1,9 @@
 ---
 name: splitwise-cli
-description: "Use when helping with the Splitwise CLI (splitwisecli) — splitting bills, tracking shared expenses between friends, recording expenses, settling debts, or checking balances. Use for 'Splitwise', 'split receipts', 'split bills', 'who owes whom', 'expense tracking', 'splitwisecli', 'divide costs', or 'settle up'."
+description: "Use when helping with the Splitwise CLI (splitwisecli) — splitting bills, tracking shared expenses between friends, recording expenses, settling debts, or checking balances. Always use this skill whenever the user wants to track who paid for something, manage shared household or group expenses, record a reimbursement, or divide a cost between people — even if they do not explicitly mention 'splitwisecli' by name. Trigger on: 'Splitwise', 'split receipts', 'split the bill', 'quem me deve', 'dividir conta', 'rachar', 'quitar dívida', 'who owes whom', 'expense tracking', 'splitwisecli', 'divide costs', 'settle up', 'I paid for dinner', 'track what I owe', 'log a payment'."
 metadata:
-  version: 1.0.1
+  version: 1.1.0
+
 ---
 
 # Splitwise CLI
@@ -11,7 +12,8 @@ Command-line interface for [Splitwise](https://www.splitwise.com/) — split bil
 
 ## Configuration
 
-Credentials from https://secure.splitwise.com/apps (Consumer Key, Consumer Secret, API Key). Set via env vars (`SPLITWISE_CONSUMER_KEY`, etc.) or `.env` 
+Credentials are obtained from https://secure.splitwise.com/apps (Consumer Key, Consumer Secret, API Key).
+Set via environment variables or a `.env` file.
 
 ## Installation
 
@@ -19,96 +21,131 @@ Credentials from https://secure.splitwise.com/apps (Consumer Key, Consumer Secre
 # No Go required
 curl -fsSL https://raw.githubusercontent.com/oristides/splitwisecli/main/install.sh | sh
 ```
- 
-## Enviroment variables setting
-Ask th user to execute this or ask the user this values and do it yourself  or you can
+
+Add to PATH if needed: `export PATH="$PATH:$HOME/.local/bin"`
+
+Verify install: `splitwisecli --version` or `which splitwisecli`
+
+## Environment Variables
+
+Ask the user to provide their credentials, then run:
 
 ```bash
 export SPLITWISE_CONSUMER_KEY=your_consumer_key_here
 export SPLITWISE_CONSUMER_SECRET=your_consumer_secret_here
-export SPLITWISE_API_KEY=your_api_key_here 
+export SPLITWISE_API_KEY=your_api_key_here
 ```
+
+Or copy `.env.example` to `.env` and fill in the values.
+
+**Troubleshooting auth errors**: Verify vars are set with `echo $SPLITWISE_API_KEY`. If empty, re-export or check `.env`.
+
+---
 
 ## Command Reference
 
-| Command | Purpose |
-|---------|---------|
-| `splitwisecli user me` | Current user |
-| `splitwisecli friend list` | Friends (IDs for expenses) |
-| `splitwisecli group list` | Groups |
-| `splitwisecli group get 123` or `get "Trip to Japan"` | Group by ID or name |
-| `splitwisecli balance` | All friend balances |
-| `splitwisecli balance --friend 456` | Balance with one friend |
-| `splitwisecli balance --group 123` | Balances in group |
-| `splitwisecli expense list` | List expenses |
-| `splitwisecli expense create` | Create expense |
-| `splitwisecli expense update 789` | Update expense |
-| `splitwisecli expense settle` | Record payment |
-| `splitwisecli expense delete 789` | Delete expense |
+| Command                                                      | Purpose                              |
+| ------------------------------------------------------------ | ------------------------------------ |
+| `splitwisecli user me`                                       | Current user info                    |
+| `splitwisecli user get <id>`                                 | Get user by ID                       |
+| `splitwisecli friend list`                                   | Friends with IDs and balances        |
+| `splitwisecli group list`                                    | All groups                           |
+| `splitwisecli group get <id\|"name">`                        | Group by ID or name                  |
+| `splitwisecli balance`                                       | All friend balances                  |
+| `splitwisecli balance --friend <id>`                         | Balance with one friend              |
+| `splitwisecli balance --group <id\|"name">`                  | Balances inside a group              |
+| `splitwisecli expense list`                                  | List expenses                        |
+| `splitwisecli expense list --group <id>`                     | Expenses in a group                  |
+| `splitwisecli expense list --friend <id> --limit 20`         | Expenses with a friend (limited)     |
+| `splitwisecli expense get <id>`                              | Expense details (who paid, who owes) |
+| `splitwisecli expense create`                                | Create expense                       |
+| `splitwisecli expense update <id>`                           | Update expense fields                |
+| `splitwisecli expense settle`                                | Record a payment / settle up         |
+| `splitwisecli expense delete <id>`                           | Delete expense                       |
+| `splitwisecli comment list <expense_id>`                     | Comments on an expense               |
+| `splitwisecli comment create --expense <id> --content "..."` | Add comment                          |
+| `splitwisecli notification list`                             | View notifications                   |
+| `splitwisecli other currencies`                              | List supported currencies            |
+| `splitwisecli other categories`                              | List expense categories              |
 
-Global: `--json` or `-j` for JSON output.
+Global flag: `--json` / `-j` for JSON output.
 
 ---
 
 ## Creating Expenses
 
-### Defaults
+### Defaults (important — memorize these)
 
-- **Paid-by**: You (omit `--paid-by` = you paid). Use `--paid-by friend` or `--paid-by 456` when they paid.
-- **Split**: Equal (50/50) for friend expenses. Use `--split` for custom.
+- **Paid-by**: YOU by default. Omitting `--paid-by` means you paid.
+- **Split**: Equal (50/50) by default for friend expenses. Use `--split` for custom percentages.
+- **Group vs friend**: Use `--friend <id>` for 1-on-1, `--group <id|"name">` for group expenses.
 
-### Friend expenses
+### Friend Expenses
 
 ```bash
-# You paid $100, split 50/50
+# You paid $100, split 50/50 → friend owes you $50
 splitwisecli expense create --friend 456 -d "Dinner" -c 100
 
-# Custom split: percentages (must sum to 100). Cost $120 → 40%=$48, 60%=$72
+# Custom split (percentages must sum to 100): you had 40%, friend 60%
 splitwisecli expense create --friend 456 -d "Restaurant" -c 120 --split 40,60
 
-# They owe you full amount
+# Friend owes you everything (you paid, they owe 100%)
 splitwisecli expense create --friend 456 -d "Groceries" -c 80 --split 0,100
 
-# Friend paid — you owe them
+# Friend paid → you owe them half
 splitwisecli expense create --friend 456 -d "Dinner" -c 100 --paid-by friend
+
+# Friend paid → custom split, you had 30%
+splitwisecli expense create --friend 456 -d "Lunch" -c 60 --split 30,70 --paid-by friend
 ```
 
-### Group expenses
+### Group Expenses
 
-Group = ID or name: `--group 123` or `--group "Trip to Japan"`
+`--group` accepts either a numeric ID or a quoted name.
 
 ```bash
-# You paid, split equally
+# You paid, split equally among all group members
 splitwisecli expense create --group 123 -d "Movie tickets" -c 60 --equal
 
-# Specific member paid
-splitwisecli expense create --group 123 -d "Dinner" -c 90 --equal --paid-by 789
+# You paid, split equally — using group name
+splitwisecli expense create --group "Trip to Japan" -d "Hotel" -c 300 --equal --paid-by me
+
+# A specific group member (user 789) paid, split equally
+splitwisecli expense create --group 123 -d "Group dinner" -c 90 --equal --paid-by 789
+
+# Default split (no --equal) — Splitwise uses equal split by default in groups too
+splitwisecli expense create --group 123 -d "Pizza night" -c 45
 ```
+
+> **`--equal` vs default in groups**: Both result in an equal split. `--equal` is explicit and recommended for clarity. Omitting it also works.
 
 ---
 
 ## Settling Up (Recording Payments)
 
+Settlements are recorded as payment expenses. Positive balance = they owe you; negative = you owe them.
+
 ```bash
-# You pay friend back (default)
+# You pay a friend back (you owe them, you're settling)
 splitwisecli expense settle --friend 456 --amount 50
 
-# Friend pays you back
+# Friend pays you back (they owe you, they're settling)
 splitwisecli expense settle --friend 456 --amount 50 --paid-by friend
 
-# Group: who pays, who receives
-splitwisecli expense settle --group "Trip" --amount 100 --paid-by me --to 789
+# Group settlement: you pay user 789
+splitwisecli expense settle --group "Trip to Japan" --amount 100 --paid-by me --to 789
 ```
 
 ---
 
 ## Updating Expenses
 
-Specify only fields to change:
+Specify only the fields you want to change:
 
 ```bash
 splitwisecli expense update 789 --description "Dinner at Mario's"
 splitwisecli expense update 789 --cost 95
+splitwisecli expense update 789 --currency EUR
 splitwisecli expense update 789 --split 40,60
 ```
 
@@ -116,13 +153,46 @@ splitwisecli expense update 789 --split 40,60
 
 ## Key Flags
 
-| Flag | Values | Notes |
-|------|--------|-------|
-| `--paid-by` | `me`, `friend`, or user ID | Default: you |
-| `--split` | `myPct,friendPct` (e.g. `40,60`) | Must sum to 100 |
-| `--friend` | User ID | Friend's ID from `friend list` |
-| `--group` | ID or name | Resolves by name |
-| `--to` | User ID | Required with `--group` for settle |
+| Flag            | Values                         | Notes                                 |
+| --------------- | ------------------------------ | ------------------------------------- |
+| `--paid-by`     | `me`, `friend`, or user ID     | Default: you                          |
+| `--split`       | `myPct,friendPct` e.g. `40,60` | Must sum to 100; friend expenses only |
+| `--equal`       | (flag, no value)               | Equal split; recommended for groups   |
+| `--friend`      | User ID                        | Get IDs from `friend list`            |
+| `--group`       | ID or quoted name              | Resolves by name automatically        |
+| `--to`          | User ID                        | Required for group settlements        |
+| `--limit`       | Integer                        | Limit results in `expense list`       |
+| `--currency`    | e.g. `USD`, `EUR`, `BRL`       | Currency code for `expense update`    |
+| `--json` / `-j` | (flag)                         | JSON output, all commands             |
+
+---
+
+## Multi-Step Workflows
+
+Some user requests require multiple CLI calls. Always identify and execute the full sequence.
+
+**Example — "Who owes me money?"**
+
+```bash
+splitwisecli balance           # see all friend balances
+splitwisecli balance --group "Apartment"   # then check a specific group
+```
+
+**Example — "Split last night's dinner $90, Ana paid, 3 people in Trip group"**
+
+```bash
+# 1. Find the group ID (if you don't have it)
+splitwisecli group list
+# 2. Create the expense with the right payer
+splitwisecli expense create --group "Trip to Japan" -d "Dinner" -c 90 --equal --paid-by 789
+```
+
+**Example — "Fix the amount on expense 101 and add a comment"**
+
+```bash
+splitwisecli expense update 101 --cost 75
+splitwisecli comment create --expense 101 --content "Corrected amount, receipt was $75"
+```
 
 ---
 
@@ -130,29 +200,28 @@ splitwisecli expense update 789 --split 40,60
 
 ```
 splitwisecli
-├── user          # User operations
-│   ├── me        # Get current user
-│   └── get       # Get user by ID
-├── group         # Group operations
-│   ├── list      # List all groups
-│   └── get       # Get group by ID or name
-├── friend        # Friend operations
-│   └── list      # List all friends (with IDs and balances)
-├── balance       # Balance operations
-│   └── (default) # Show balances (--friend, --group)
-├── expense       # Expense operations
-│   ├── list      # List expenses
-│   ├── get       # Get expense details
-│   ├── create    # Create expense (--friend or --group)
-│   ├── update    # Update expense (fix mistakes)
-│   ├── settle    # Record a payment / settle up
-│   └── delete    # Delete expense
-├── comment       # Comment operations
-│   ├── list      # Get expense comments
-│   └── create    # Add comment
-├── notification  # Notification operations
-│   └── list      # List notifications
-└── other         # Utilities
-    ├── currencies  # List currencies
-    └── categories  # List categories
+├── user
+│   ├── me            # Current user
+│   └── get <id>      # User by ID
+├── group
+│   ├── list          # All groups
+│   └── get           # By ID or name
+├── friend
+│   └── list          # Friends with IDs and balances
+├── balance           # Balances (--friend, --group)
+├── expense
+│   ├── list          # List (--group, --friend, --limit)
+│   ├── get <id>      # Details
+│   ├── create        # Create (--friend or --group)
+│   ├── update <id>   # Patch fields
+│   ├── settle        # Record payment
+│   └── delete <id>   # Delete
+├── comment
+│   ├── list <id>     # Expense comments
+│   └── create        # Add comment
+├── notification
+│   └── list
+└── other
+    ├── currencies
+    └── categories
 ```
