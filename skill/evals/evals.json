@@ -1,0 +1,210 @@
+{
+  "skill_name": "splitwise-cli",
+  "version": "1.2.0",
+  "description": "Eval set for splitwise-cli. Both stages are fully deterministic — no LLM judge. Stage 1 checks skill triggering via JSON parse. Stage 2 checks CLI commands via flag tokenization.",
+  "evals": [
+    {
+      "id": 1,
+      "language": "en",
+      "type": "single-call",
+      "prompt": "List all my friends and their balances.",
+      "expected_calls": [
+        {
+          "command": "splitwisecli friend list",
+          "required_flags": [],
+          "forbidden_flags": []
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "language": "en",
+      "type": "single-call",
+      "prompt": "I paid $85 for dinner last night with my friend (ID 456). Split it equally.",
+      "expected_calls": [
+        {
+          "command": "splitwisecli expense create --friend 456 -d \"Dinner\" -c 85",
+          "required_flags": ["--friend 456", "-c 85|--cost 85"],
+          "forbidden_flags": ["--paid-by friend", "--paid-by 456"]
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "language": "pt",
+      "type": "single-call",
+      "prompt": "Minha amiga (ID 789) pagou R$120 no almoço. Quero dividir igualmente.",
+      "expected_calls": [
+        {
+          "command": "splitwisecli expense create --friend 789 -d \"Almoço\" -c 120 --paid-by friend",
+          "required_flags": ["--friend 789", "-c 120|--cost 120", "--paid-by friend"],
+          "forbidden_flags": ["--paid-by me"]
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "language": "en",
+      "type": "single-call",
+      "prompt": "I covered a $200 grocery run for friend ID 321. They owe me the full amount.",
+      "expected_calls": [
+        {
+          "command": "splitwisecli expense create --friend 321 -d \"Groceries\" -c 200 --split 0,100",
+          "required_flags": ["--friend 321", "-c 200|--cost 200", "--split 0,100"],
+          "forbidden_flags": ["--paid-by friend", "--split 50,50", "--equal"]
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "language": "pt",
+      "type": "single-call",
+      "prompt": "Quanto eu devo pra cada amigo? Quero ver todos os saldos.",
+      "expected_calls": [
+        {
+          "command": "splitwisecli balance",
+          "required_flags": [],
+          "forbidden_flags": ["--friend", "--group"]
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "language": "en",
+      "type": "single-call",
+      "prompt": "Pay back friend 456 — I owe them $50.",
+      "expected_calls": [
+        {
+          "command": "splitwisecli expense settle --friend 456 --amount 50",
+          "required_flags": ["--friend 456", "--amount 50"],
+          "forbidden_flags": ["--paid-by friend"]
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "language": "pt",
+      "type": "single-call",
+      "prompt": "Registra que o João (usuário 555) me pagou de volta R$75.",
+      "expected_calls": [
+        {
+          "command": "splitwisecli expense settle --friend 555 --amount 75 --paid-by friend",
+          "required_flags": ["--friend 555", "--amount 75", "--paid-by friend"],
+          "forbidden_flags": ["--paid-by me"]
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "language": "en",
+      "type": "single-call",
+      "prompt": "In the 'Trip to Japan' group, I paid $300 for the hotel. Split equally.",
+      "expected_calls": [
+        {
+          "command": "splitwisecli expense create --group \"Trip to Japan\" -d \"Hotel\" -c 300 --equal",
+          "required_flags": ["--group \"Trip to Japan\"|--group 'Trip to Japan'", "-c 300|--cost 300", "--equal"],
+          "forbidden_flags": ["--paid-by friend"]
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "language": "pt",
+      "type": "multi-step",
+      "step_count": 2,
+      "prompt": "Quero ver os gastos do grupo 'Apartamento' e também ver meu saldo nesse grupo.",
+      "expected_calls": [
+        {
+          "command": "splitwisecli expense list --group \"Apartamento\"",
+          "required_flags": ["--group \"Apartamento\"|--group 'Apartamento'"],
+          "forbidden_flags": []
+        },
+        {
+          "command": "splitwisecli balance --group \"Apartamento\"",
+          "required_flags": ["--group \"Apartamento\"|--group 'Apartamento'"],
+          "forbidden_flags": []
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "language": "en",
+      "type": "multi-step",
+      "step_count": 3,
+      "prompt": "I need to fix expense 101: change the description to 'Team lunch', update cost to $95, and add a comment saying 'Receipt corrected'.",
+      "expected_calls": [
+        {
+          "command": "splitwisecli expense update 101 --description \"Team lunch\"",
+          "required_flags": ["101", "--description \"Team lunch\"|--description 'Team lunch'"],
+          "forbidden_flags": []
+        },
+        {
+          "command": "splitwisecli expense update 101 --cost 95",
+          "required_flags": ["101", "--cost 95|-c 95"],
+          "forbidden_flags": []
+        },
+        {
+          "command": "splitwisecli comment create --expense 101 --content \"Receipt corrected\"",
+          "required_flags": ["--expense 101", "--content \"Receipt corrected\"|--content 'Receipt corrected'"],
+          "forbidden_flags": []
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "language": "pt",
+      "type": "multi-step",
+      "step_count": 3,
+      "prompt": "Preciso ver meus grupos, depois listar as despesas do grupo 123, e por fim ver meu perfil.",
+      "expected_calls": [
+        {
+          "command": "splitwisecli group list",
+          "required_flags": [],
+          "forbidden_flags": []
+        },
+        {
+          "command": "splitwisecli expense list --group 123",
+          "required_flags": ["--group 123"],
+          "forbidden_flags": []
+        },
+        {
+          "command": "splitwisecli user me",
+          "required_flags": [],
+          "forbidden_flags": []
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "language": "en",
+      "type": "single-call",
+      "prompt": "I paid $120 for a restaurant. My friend (ID 222) ate 70% of the food, I had 30%.",
+      "expected_calls": [
+        {
+          "command": "splitwisecli expense create --friend 222 -d \"Restaurant\" -c 120 --split 30,70",
+          "required_flags": ["--friend 222", "-c 120|--cost 120", "--split 30,70"],
+          "forbidden_flags": ["--paid-by friend", "--equal", "--split 70,30"]
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "language": "en",
+      "type": "multi-step",
+      "step_count": 2,
+      "prompt": "Ana (user 888) paid $200 for groceries in the 'House' group. Split equally. Then settle up: I owe Ana $40 from before.",
+      "expected_calls": [
+        {
+          "command": "splitwisecli expense create --group \"House\" -d \"Groceries\" -c 200 --equal --paid-by 888",
+          "required_flags": ["--group \"House\"|--group 'House'", "-c 200|--cost 200", "--equal", "--paid-by 888"],
+          "forbidden_flags": ["--paid-by me", "--paid-by friend"]
+        },
+        {
+          "command": "splitwisecli expense settle --friend 888 --amount 40",
+          "required_flags": ["--friend 888", "--amount 40"],
+          "forbidden_flags": ["--paid-by friend"]
+        }
+      ]
+    }
+  ]
+}

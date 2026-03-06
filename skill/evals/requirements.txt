@@ -1,0 +1,2 @@
+litellm>=1.40.0   # unified interface for all LLM providers
+rich>=13.0.0      # pretty terminal output (optional but recommended)
