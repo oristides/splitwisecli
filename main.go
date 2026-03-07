@@ -24,15 +24,22 @@ var (
 // ============================================================================
 
 func main() {
+	// config can run without existing config (for first-time setup)
+	if len(os.Args) >= 2 && os.Args[1] == "config" {
+		if err := runConfigSetup(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	// Initialize config
 	var err error
 	cfg, err = config.Load()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
-		fmt.Fprintln(os.Stderr, "\nTip: Create a .env file with your Splitwise credentials:")
-		fmt.Fprintln(os.Stderr, "  SPLITWISE_CONSUMER_KEY=your_key")
-		fmt.Fprintln(os.Stderr, "  SPLITWISE_CONSUMER_SECRET=your_secret")
-		fmt.Fprintln(os.Stderr, "  SPLITWISE_API_KEY=your_api_key")
+		fmt.Fprintln(os.Stderr, "\nTip: Run 'splitwisecli config' to set up credentials interactively,")
+		fmt.Fprintln(os.Stderr, "  or create a .env file with SPLITWISE_CONSUMER_KEY, SPLITWISE_CONSUMER_SECRET, SPLITWISE_API_KEY")
 		os.Exit(1)
 	}
 
@@ -50,6 +57,7 @@ func main() {
 	rootCmd.PersistentFlags().BoolVarP(&outputJSON, "json", "j", false, "Output as JSON")
 
 	// Add subcommands
+	rootCmd.AddCommand(configCmd)
 	rootCmd.AddCommand(userCmd)
 	rootCmd.AddCommand(groupCmd)
 	rootCmd.AddCommand(friendCmd)
@@ -88,6 +96,53 @@ func printJSON(data interface{}) {
 		}
 		fmt.Println(string(jsonBytes))
 	}
+}
+
+// runConfigSetup runs interactive credential setup, verifies with API, stores current user, and prints success.
+func runConfigSetup() error {
+	if err := config.RunInteractiveSetup(); err != nil {
+		return err
+	}
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("credentials saved but failed to reload: %w", err)
+	}
+	cli := client.New(cfg)
+	resp, err := cli.GetCurrentUser()
+	if err != nil {
+		return fmt.Errorf("credentials saved but verification failed: %w", err)
+	}
+	u := resp.User
+	name := u.FirstName
+	if u.LastName != "" {
+		name = name + " " + u.LastName
+	}
+	if err := config.SaveCurrentUser(u.ID, name, u.Email, u.DefaultCurrency, u.Locale); err != nil {
+		return fmt.Errorf("verification succeeded but failed to store user: %w", err)
+	}
+	fmt.Println()
+	fmt.Println("CURRENT_USER:")
+	fmt.Printf("  ID: %d\n", u.ID)
+	fmt.Printf("  Name: %s\n", name)
+	fmt.Printf("  Email: %s\n", u.Email)
+	fmt.Printf("  Default Currency: %s\n", u.DefaultCurrency)
+	fmt.Printf("  Locale: %s\n", u.Locale)
+	fmt.Println()
+	fmt.Println("Installation process is working!")
+	return nil
+}
+
+// ============================================================================
+// Config Command
+// ============================================================================
+
+var configCmd = &cobra.Command{
+	Use:   "config",
+	Short: "Set up API credentials interactively",
+	Long:  `Run interactive setup to save your Splitwise API credentials to ~/.config/splitwisecli/config.json`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runConfigSetup()
+	},
 }
 
 // ============================================================================

@@ -13,22 +13,22 @@ Command-line interface for [Splitwise](https://www.splitwise.com/) — split bil
 ## Configuration
 
 Credentials are obtained from https://secure.splitwise.com/apps (Consumer Key, Consumer Secret, API Key).
-Set via environment variables or a `.env` file.
 
-## Installation
+### Recommended: `splitwisecli config`
 
-```bash
-# No Go required
-curl -fsSL https://raw.githubusercontent.com/oristides/splitwisecli/main/install.sh | sh
-```
+Run `splitwisecli config` for interactive credential setup. It will:
 
-Add to PATH if needed: `export PATH="$PATH:$HOME/.local/bin"`
+1. **Prompt** for Consumer Key, Consumer Secret, and API Key
+2. **Save** credentials to `~/.config/splitwisecli/config.json` (permissions: 0600)
+3. **Verify** by calling the API (`user me`) — validates that credentials work
+4. **Store** the current user (whoever owns the credentials) in config: ID, Name, Email, Default Currency, Locale
+5. **Print** the user data and `Installation process is working!` on success
 
-Verify install: `splitwisecli --version` or `which splitwisecli`
+This works for any user — the API returns the profile for the provided credentials.
 
-## Environment Variables
+### Alternative: Environment Variables
 
-Ask the user to provide their credentials, then run:
+Set via environment variables or a `.env` file (env vars override the config file):
 
 ```bash
 export SPLITWISE_CONSUMER_KEY=your_consumer_key_here
@@ -38,7 +38,21 @@ export SPLITWISE_API_KEY=your_api_key_here
 
 Or copy `.env.example` to `.env` and fill in the values.
 
-**Troubleshooting auth errors**: Verify vars are set with `echo $SPLITWISE_API_KEY`. If empty, re-export or check `.env`.
+**Troubleshooting auth errors**: Verify vars are set with `echo $SPLITWISE_API_KEY`. If empty, re-export or run `splitwisecli config`.
+
+## Installation
+
+```bash
+# No Go required
+curl -fsSL https://raw.githubusercontent.com/oristides/splitwisecli/main/install.sh | sh
+```
+
+- **Interactive terminal**: The installer runs `splitwisecli config` automatically after installing — credential setup starts immediately.
+- **No TTY** (CI, redirected output, background): Binary is installed; user must run `splitwisecli config` manually from a terminal.
+
+Add to PATH if needed: `export PATH="$PATH:$HOME/.local/bin"`
+
+Verify install: `splitwisecli --version` or `which splitwisecli`
 
 ---
 
@@ -46,6 +60,7 @@ Or copy `.env.example` to `.env` and fill in the values.
 
 | Command                                                      | Purpose                              |
 | ------------------------------------------------------------ | ------------------------------------ |
+| `splitwisecli config`                                        | Interactive credential setup + verify |
 | `splitwisecli user me`                                       | Current user info                    |
 | `splitwisecli user get <id>`                                 | Get user by ID                       |
 | `splitwisecli friend list`                                   | Friends with IDs and balances        |
@@ -200,6 +215,7 @@ splitwisecli comment create --expense 101 --content "Corrected amount, receipt w
 
 ```
 splitwisecli
+├── config              # Interactive credential setup (verify + store current user)
 ├── user
 │   ├── me            # Current user
 │   └── get <id>      # User by ID

@@ -50,7 +50,17 @@ go build -o splitwisecli
 
 ## Configuration
 
-### Option 1: Environment Variables
+### Option 1: Interactive setup (recommended for first run)
+
+```bash
+splitwisecli config
+```
+
+Prompts for your credentials and saves them to `~/.config/splitwisecli/config.json` (or `$XDG_CONFIG_HOME/splitwisecli/config.json`). File permissions are set to `0600`.
+
+### Option 2: Environment Variables
+
+Environment variables **override** the config file:
 
 ```bash
 export SPLITWISE_CONSUMER_KEY=your_consumer_key
@@ -58,19 +68,35 @@ export SPLITWISE_CONSUMER_SECRET=your_consumer_secret
 export SPLITWISE_API_KEY=your_api_key
 ```
 
-### Option 2: .env File
+### Option 3: .env File
 
 ```bash
 cp .env.example .env
 # Edit .env with your credentials
 ```
 
-### Getting Credentials
+### Getting your API credentials
 
-1. Go to https://secure.splitwise.com/apps
-2. Create a new app
-3. Copy the Consumer Key and Consumer Secret
-4. Generate an API Key on the app details page
+1. Open the **Splitwise Developer Apps** page:  
+   **https://secure.splitwise.com/apps**
+
+2. Click **"Create new application"**
+
+3. Fill in the form:
+   - Application name: e.g. `My CLI`
+   - Description: optional
+   - Accept the API Terms of Use
+
+4. After creating, copy from your app page:
+   - **Consumer Key**
+   - **Consumer Secret**
+
+5. On the app details page, generate your **API Key**  
+   (button/link to create a personal API key for your account)
+
+6. Run `splitwisecli config` and paste your credentials when prompted.
+
+**API docs:** https://dev.splitwise.com/
 
 ## Usage
 
