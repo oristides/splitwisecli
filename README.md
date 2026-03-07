@@ -323,8 +323,8 @@ With coverage:
 
 ```bash
 go test -cover ./...
-go test -coverprofile=coverage.out ./...
-go tool cover -html=coverage.out
+go test -coverprofile=coverage.txt ./...
+go tool cover -html=coverage.txt
 ```
 
 ## License
