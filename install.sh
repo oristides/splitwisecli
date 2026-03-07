@@ -94,7 +94,11 @@ else
   echo ""
   echo "To run help: $BINARY_PATH --help"
   echo ""
+  echo "Install and read the SKILL on https://github.com/${REPO}/blob/main/skill/SKILL.md to learn how to use splitwisecli"
+  echo ""
   exit 0
 fi
 echo ""
 echo "To run help: $BINARY_PATH --help"
+echo ""
+echo "Install and read the SKILL on https://github.com/${REPO}/blob/main/skill/SKILL.md to learn how to use splitwisecli"

@@ -50,7 +50,11 @@ else
   echo ""
   echo "To run help: $INSTALL_DIR/$BINARY --help"
   echo ""
+  echo "Install and read the SKILL on https://github.com/oristides/splitwisecli/blob/main/skill/SKILL.md to learn how to use splitwisecli"
+  echo ""
   exit 0
 fi
 echo ""
 echo "To run help: $INSTALL_DIR/$BINARY --help"
+echo ""
+echo "Install and read the SKILL on https://github.com/oristides/splitwisecli/blob/main/skill/SKILL.md to learn how to use splitwisecli"
