@@ -540,7 +540,53 @@ type CreateExpenseRequest struct {
 	CategoryID     int                `json:"category_id,omitempty"`
 	SplitEqually   bool               `json:"split_equally,omitempty"`
 	Payment        bool               `json:"payment,omitempty"`
-	Users          []ExpenseUserShare `json:"users,omitempty"`
+	Users          []ExpenseUserShare `json:"-"`
+}
+
+// MarshalJSON converts the Users array to Splitwise's flat format (users__0__user_id, etc.)
+func (r *CreateExpenseRequest) MarshalJSON() ([]byte, error) {
+	type Alias CreateExpenseRequest
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(r),
+	}
+
+	// Build flat keys for users
+	if len(r.Users) > 0 {
+		// First marshal without Users
+		base, err := json.Marshal(aux)
+		if err != nil {
+			return nil, err
+		}
+
+		// Parse base as map
+		var m map[string]interface{}
+		json.Unmarshal(base, &m)
+
+		// Ensure group_id is always sent (API requires it; omitempty skips 0)
+		m["group_id"] = r.GroupID
+
+		// Add flat user keys
+		for i, u := range r.Users {
+			m[fmt.Sprintf("users__%d__user_id", i)] = u.UserID
+			m[fmt.Sprintf("users__%d__paid_share", i)] = u.PaidShare
+			m[fmt.Sprintf("users__%d__owed_share", i)] = u.OwedShare
+			if u.Email != "" {
+				m[fmt.Sprintf("users__%d__email", i)] = u.Email
+			}
+			if u.FirstName != "" {
+				m[fmt.Sprintf("users__%d__first_name", i)] = u.FirstName
+			}
+			if u.LastName != "" {
+				m[fmt.Sprintf("users__%d__last_name", i)] = u.LastName
+			}
+		}
+
+		return json.Marshal(m)
+	}
+
+	return json.Marshal(aux)
 }
 
 type ExpenseUserShare struct {

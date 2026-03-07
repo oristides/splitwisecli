@@ -49,7 +49,7 @@ if [ -z "$LATEST_URL" ]; then
   echo ""
   echo "To publish releases, tag a version and run: goreleaser release"
   echo "See: https://github.com/${REPO}/releases"
-  exit 1
+  exit 0
 fi
 
 echo "Downloading ${BINARY}..."
@@ -76,3 +76,25 @@ if ! echo ":$PATH:" | grep -q ":$INSTALL_DIR:"; then
   echo "Add to PATH: export PATH=\"\$PATH:$INSTALL_DIR\""
   echo ""
 fi
+echo "Next: run '${BINARY} config' to set up your API credentials."
+echo "      Credentials are saved to ~/.config/splitwisecli/config.json"
+echo ""
+# Require interactive terminal for credential setup (no Scenario B fallback)
+if [ "$OS" = "Windows" ]; then
+  echo "Run '${BINARY} config' to set up credentials."
+elif [ -t 1 ] && [ -e /dev/tty ]; then
+  echo "Running credential setup..."
+  "$BINARY_PATH" config </dev/tty 2>/dev/tty
+else
+  echo "Installation succeeded. ${BINARY} is installed at $BINARY_PATH"
+  echo ""
+  echo "Credential setup was skipped (no interactive terminal — e.g. output redirected, CI, or background)."
+  echo ""
+  echo "Next step: run '${BINARY} config' from your terminal to set up API credentials."
+  echo ""
+  echo "To run help: $BINARY_PATH --help"
+  echo ""
+  exit 0
+fi
+echo ""
+echo "To run help: $BINARY_PATH --help"
