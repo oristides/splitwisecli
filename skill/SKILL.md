@@ -26,6 +26,21 @@ Run `splitwisecli config` for interactive credential setup. It will:
 
 This works for any user — the API returns the profile for the provided credentials.
 
+## Installation
+
+```bash
+# No Go required
+curl -fsSL https://raw.githubusercontent.com/oristides/splitwisecli/main/install.sh | sh
+```
+
+- **Interactive terminal**: The installer runs `splitwisecli config` automatically after installing — credential setup starts immediately.
+- **No TTY** (CI, redirected output, background): Binary is installed; user must run `splitwisecli config` manually from a terminal.
+
+Add to PATH if needed: `export PATH="$PATH:$HOME/.local/bin"`
+
+Verify install: `splitwisecli --version` or `which splitwisecli`
+
+
 ### Alternative: Environment Variables
 
 Set via environment variables or a `.env` file (env vars override the config file):
@@ -40,19 +55,6 @@ Or copy `.env.example` to `.env` and fill in the values.
 
 **Troubleshooting auth errors**: Verify vars are set with `echo $SPLITWISE_API_KEY`. If empty, re-export or run `splitwisecli config`.
 
-## Installation
-
-```bash
-# No Go required
-curl -fsSL https://raw.githubusercontent.com/oristides/splitwisecli/main/install.sh | sh
-```
-
-- **Interactive terminal**: The installer runs `splitwisecli config` automatically after installing — credential setup starts immediately.
-- **No TTY** (CI, redirected output, background): Binary is installed; user must run `splitwisecli config` manually from a terminal.
-
-Add to PATH if needed: `export PATH="$PATH:$HOME/.local/bin"`
-
-Verify install: `splitwisecli --version` or `which splitwisecli`
 
 ---
 
