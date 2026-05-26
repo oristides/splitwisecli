@@ -10,6 +10,7 @@ import (
 	"github.com/oriel/splitwisecli/internal/client"
 	"github.com/oriel/splitwisecli/internal/config"
 	"github.com/oriel/splitwisecli/internal/expense"
+	"github.com/oriel/splitwisecli/internal/friend"
 	"github.com/spf13/cobra"
 )
 
@@ -307,8 +308,50 @@ var friendListCmd = &cobra.Command{
 	},
 }
 
+var friendAddCmd = &cobra.Command{
+	Use:   "add",
+	Short: "Add a friend by email",
+	Long:  "Adds or matches a Splitwise friend by email using /create_friend. Phone numbers are not supported by the Splitwise friend API.",
+	Run: func(cmd *cobra.Command, args []string) {
+		req, err := friend.NewAddRequest(friendAddEmail, friendAddFirstName, friendAddLastName)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		resp, err := splitwise.CreateFriend(&client.CreateFriendRequest{
+			UserEmail:     req.Email,
+			UserFirstName: req.FirstName,
+			UserLastName:  req.LastName,
+		})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		if outputJSON {
+			printJSON(resp)
+			return
+		}
+		f := resp.Friend
+		fmt.Printf("Friend added: %s %s\n", f.FirstName, f.LastName)
+		fmt.Printf("ID: %d\n", f.ID)
+		fmt.Printf("Email: %s\n", f.Email)
+		fmt.Printf("Registration Status: %s\n", f.RegistrationStatus)
+	},
+}
+
+var (
+	friendAddEmail     string
+	friendAddFirstName string
+	friendAddLastName  string
+)
+
 func init() {
 	friendCmd.AddCommand(friendListCmd)
+	friendAddCmd.Flags().StringVar(&friendAddEmail, "email", "", "Friend email address")
+	friendAddCmd.Flags().StringVar(&friendAddFirstName, "first-name", "", "Friend first name (required by Splitwise only when inviting a new user)")
+	friendAddCmd.Flags().StringVar(&friendAddLastName, "last-name", "", "Friend last name")
+	friendCmd.AddCommand(friendAddCmd)
 }
 
 // ============================================================================
@@ -542,12 +585,12 @@ var expenseCreateCmd = &cobra.Command{
 		}
 
 		req := &client.CreateExpenseRequest{
-			GroupID:       groupID,
-			Description:   expenseDescription,
-			Cost:          expenseCost,
-			CurrencyCode:  expenseCurrency,
-			Date:          expenseDate,
-			SplitEqually:  splitEqually,
+			GroupID:      groupID,
+			Description:  expenseDescription,
+			Cost:         expenseCost,
+			CurrencyCode: expenseCurrency,
+			Date:         expenseDate,
+			SplitEqually: splitEqually,
 		}
 
 		// Expense with friend (who paid + split)
@@ -905,28 +948,28 @@ var expenseDeleteCmd = &cobra.Command{
 
 // Expense flags
 var (
-	groupIDStr          string
-	friendID            int
-	limit               int
-	datedAfter          string
-	datedBefore         string
-	expenseDescription  string
-	expenseCost         string
-	expenseCurrency     string
-	expenseDate         string
-	splitEqually        bool
-	expenseFriendID     int
-	expenseSplit        string
-	expensePaidBy       string
+	groupIDStr         string
+	friendID           int
+	limit              int
+	datedAfter         string
+	datedBefore        string
+	expenseDescription string
+	expenseCost        string
+	expenseCurrency    string
+	expenseDate        string
+	splitEqually       bool
+	expenseFriendID    int
+	expenseSplit       string
+	expensePaidBy      string
 
 	// settle flags
-	settleFriendID     int
-	settleGroupIDStr   string
-	settleAmount       string
-	settleCurrency     string
-	settlePaidBy       string
-	settleDescription  string
-	settleToUserID     int
+	settleFriendID    int
+	settleGroupIDStr  string
+	settleAmount      string
+	settleCurrency    string
+	settlePaidBy      string
+	settleDescription string
+	settleToUserID    int
 
 	// update flags
 	updateDesc     string
@@ -1035,7 +1078,7 @@ var commentCreateCmd = &cobra.Command{
 
 var (
 	commentExpenseID int
-	commentContent  string
+	commentContent   string
 )
 
 func init() {
@@ -1084,7 +1127,7 @@ var notificationListCmd = &cobra.Command{
 }
 
 var (
-	notificationLimit  int
+	notificationLimit int
 	notificationAfter string
 )
 

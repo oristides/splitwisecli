@@ -19,8 +19,8 @@ type Client struct {
 
 func New(cfg *config.Config) *Client {
 	return &Client{
-		baseURL: cfg.BaseURL,
-		apiKey:  cfg.APIKey,
+		baseURL:    cfg.BaseURL,
+		apiKey:     cfg.APIKey,
 		httpClient: &http.Client{
 			// Timeout: 30 * time.Second,
 		},
@@ -156,6 +156,19 @@ func (c *Client) GetFriends() (*FriendsResponse, error) {
 	}
 
 	var resp FriendsResponse
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+	return &resp, nil
+}
+
+func (c *Client) CreateFriend(friend *CreateFriendRequest) (*FriendResponse, error) {
+	data, err := c.Post("/create_friend", friend)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp FriendResponse
 	if err := json.Unmarshal(data, &resp); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
@@ -302,17 +315,17 @@ type UserResponse struct {
 }
 
 type User struct {
-	ID                int         `json:"id"`
-	FirstName         string      `json:"first_name"`
-	LastName          string      `json:"last_name"`
-	Email             string      `json:"email"`
-	RegistrationStatus string     `json:"registration_status"`
-	Picture           *UserPicture `json:"picture"`
-	CustomPicture     bool        `json:"custom_picture"`
-	NotificationsRead string      `json:"notifications_read,omitempty"`
-	NotificationsCount int        `json:"notifications_count,omitempty"`
-	DefaultCurrency   string      `json:"default_currency,omitempty"`
-	Locale            string      `json:"locale,omitempty"`
+	ID                 int          `json:"id"`
+	FirstName          string       `json:"first_name"`
+	LastName           string       `json:"last_name"`
+	Email              string       `json:"email"`
+	RegistrationStatus string       `json:"registration_status"`
+	Picture            *UserPicture `json:"picture"`
+	CustomPicture      bool         `json:"custom_picture"`
+	NotificationsRead  string       `json:"notifications_read,omitempty"`
+	NotificationsCount int          `json:"notifications_count,omitempty"`
+	DefaultCurrency    string       `json:"default_currency,omitempty"`
+	Locale             string       `json:"locale,omitempty"`
 }
 
 type UserPicture struct {
@@ -330,18 +343,18 @@ type GroupResponse struct {
 }
 
 type Group struct {
-	ID              int         `json:"id"`
-	Name            string      `json:"name"`
-	GroupType       string      `json:"group_type"`
-	UpdatedAt       string      `json:"updated_at"`
-	SimplifyByDefault bool      `json:"simplify_by_default"`
-	Members         []GroupMember `json:"members"`
-	OriginalDebts   []Debt      `json:"original_debts"`
-	SimplifiedDebts []Debt      `json:"simplified_debts"`
-	Avatar          *Avatar     `json:"avatar"`
-	CustomAvatar    bool        `json:"custom_avatar"`
-	CoverPhoto      *CoverPhoto `json:"cover_photo"`
-	InviteLink      string      `json:"invite_link"`
+	ID                int           `json:"id"`
+	Name              string        `json:"name"`
+	GroupType         string        `json:"group_type"`
+	UpdatedAt         string        `json:"updated_at"`
+	SimplifyByDefault bool          `json:"simplify_by_default"`
+	Members           []GroupMember `json:"members"`
+	OriginalDebts     []Debt        `json:"original_debts"`
+	SimplifiedDebts   []Debt        `json:"simplified_debts"`
+	Avatar            *Avatar       `json:"avatar"`
+	CustomAvatar      bool          `json:"custom_avatar"`
+	CoverPhoto        *CoverPhoto   `json:"cover_photo"`
+	InviteLink        string        `json:"invite_link"`
 }
 
 type GroupMember struct {
@@ -351,14 +364,14 @@ type GroupMember struct {
 
 type Balance struct {
 	CurrencyCode string `json:"currency_code"`
-	Amount      string `json:"amount"`
+	Amount       string `json:"amount"`
 }
 
 type Debt struct {
-	From          int    `json:"from"`
-	To            int    `json:"to"`
-	Amount        string `json:"amount"`
-	CurrencyCode  string `json:"currency_code"`
+	From         int    `json:"from"`
+	To           int    `json:"to"`
+	Amount       string `json:"amount"`
+	CurrencyCode string `json:"currency_code"`
 }
 
 type Avatar struct {
@@ -379,11 +392,15 @@ type FriendsResponse struct {
 	Friends []Friend `json:"friends"`
 }
 
+type FriendResponse struct {
+	Friend Friend `json:"friend"`
+}
+
 type Friend struct {
 	User
-	Groups     []FriendGroup `json:"groups"`
-	Balance    []Balance     `json:"balance"`
-	UpdatedAt  string        `json:"updated_at"`
+	Groups    []FriendGroup `json:"groups"`
+	Balance   []Balance     `json:"balance"`
+	UpdatedAt string        `json:"updated_at"`
 }
 
 type FriendGroup struct {
@@ -400,33 +417,33 @@ type ExpenseResponse struct {
 }
 
 type Expense struct {
-	ID              int         `json:"id"`
-	GroupID         *int        `json:"group_id"`
-	FriendshipID    *int        `json:"friendship_id"`
-	ExpenseBundleID *int        `json:"expense_bundle_id"`
-	Description     string      `json:"description"`
-	Repeats         bool        `json:"repeats"`
-	RepeatInterval  string      `json:"repeat_interval"`
-	EmailReminder   bool        `json:"email_reminder"`
-	NextRepeat      *string     `json:"next_repeat"`
-	Details         string      `json:"details"`
-	CommentsCount   int         `json:"comments_count"`
-	Payment         bool        `json:"payment"`
-	TransactionConfirmed bool   `json:"transaction_confirmed"`
-	Cost            string      `json:"cost"`
-	CurrencyCode    string      `json:"currency_code"`
-	Repayments      []Repayment `json:"repayments"`
-	Date            string      `json:"date"`
-	CreatedAt       string      `json:"created_at"`
-	CreatedBy       *User       `json:"created_by"`
-	UpdatedAt       string      `json:"updated_at"`
-	UpdatedBy       *User       `json:"updated_by"`
-	DeletedAt       *string     `json:"deleted_at"`
-	DeletedBy       *User       `json:"deleted_by"`
-	Category        *Category   `json:"category"`
-	Receipt         *Receipt    `json:"receipt"`
-	Users           []Share     `json:"users"`
-	Comments        []Comment   `json:"comments"`
+	ID                   int         `json:"id"`
+	GroupID              *int        `json:"group_id"`
+	FriendshipID         *int        `json:"friendship_id"`
+	ExpenseBundleID      *int        `json:"expense_bundle_id"`
+	Description          string      `json:"description"`
+	Repeats              bool        `json:"repeats"`
+	RepeatInterval       string      `json:"repeat_interval"`
+	EmailReminder        bool        `json:"email_reminder"`
+	NextRepeat           *string     `json:"next_repeat"`
+	Details              string      `json:"details"`
+	CommentsCount        int         `json:"comments_count"`
+	Payment              bool        `json:"payment"`
+	TransactionConfirmed bool        `json:"transaction_confirmed"`
+	Cost                 string      `json:"cost"`
+	CurrencyCode         string      `json:"currency_code"`
+	Repayments           []Repayment `json:"repayments"`
+	Date                 string      `json:"date"`
+	CreatedAt            string      `json:"created_at"`
+	CreatedBy            *User       `json:"created_by"`
+	UpdatedAt            string      `json:"updated_at"`
+	UpdatedBy            *User       `json:"updated_by"`
+	DeletedAt            *string     `json:"deleted_at"`
+	DeletedBy            *User       `json:"deleted_by"`
+	Category             *Category   `json:"category"`
+	Receipt              *Receipt    `json:"receipt"`
+	Users                []Share     `json:"users"`
+	Comments             []Comment   `json:"comments"`
 }
 
 type Repayment struct {
@@ -441,16 +458,16 @@ type Category struct {
 }
 
 type Receipt struct {
-	Large   string `json:"large"`
+	Large    string `json:"large"`
 	Original string `json:"original"`
 }
 
 type Share struct {
-	UserID     int     `json:"user_id"`
-	PaidShare  string  `json:"paid_share"`
-	OwedShare  string  `json:"owed_share"`
-	NetBalance string  `json:"net_balance"`
-	User       *User   `json:"user,omitempty"`
+	UserID     int    `json:"user_id"`
+	PaidShare  string `json:"paid_share"`
+	OwedShare  string `json:"owed_share"`
+	NetBalance string `json:"net_balance"`
+	User       *User  `json:"user,omitempty"`
 }
 
 type Comment struct {
@@ -465,14 +482,14 @@ type Comment struct {
 }
 
 type CommentUser struct {
-	ID        int         `json:"id"`
-	FirstName string      `json:"first_name"`
-	LastName  string      `json:"last_name"`
+	ID        int          `json:"id"`
+	FirstName string       `json:"first_name"`
+	LastName  string       `json:"last_name"`
 	Picture   *UserPicture `json:"picture"`
 }
 
 type ExpenseActionResponse struct {
-	Expenses []Expense     `json:"expenses"`
+	Expenses []Expense              `json:"expenses"`
 	Errors   map[string]interface{} `json:"errors"`
 }
 
@@ -504,14 +521,14 @@ type NotificationsResponse struct {
 }
 
 type Notification struct {
-	ID          int           `json:"id"`
-	Type        int           `json:"type"`
-	CreatedAt   string        `json:"created_at"`
-	CreatedBy   int           `json:"created_by"`
-	Source      *NotificationSource `json:"source"`
-	ImageURL    string        `json:"image_url"`
-	ImageShape  string        `json:"image_shape"`
-	Content     string        `json:"content"`
+	ID         int                 `json:"id"`
+	Type       int                 `json:"type"`
+	CreatedAt  string              `json:"created_at"`
+	CreatedBy  int                 `json:"created_by"`
+	Source     *NotificationSource `json:"source"`
+	ImageURL   string              `json:"image_url"`
+	ImageShape string              `json:"image_shape"`
+	Content    string              `json:"content"`
 }
 
 type NotificationSource struct {
@@ -590,12 +607,18 @@ func (r *CreateExpenseRequest) MarshalJSON() ([]byte, error) {
 }
 
 type ExpenseUserShare struct {
-	UserID     int    `json:"user_id,omitempty"`
-	Email      string `json:"email,omitempty"`
-	FirstName  string `json:"first_name,omitempty"`
-	LastName   string `json:"last_name,omitempty"`
-	PaidShare  string `json:"paid_share"`
-	OwedShare  string `json:"owed_share"`
+	UserID    int    `json:"user_id,omitempty"`
+	Email     string `json:"email,omitempty"`
+	FirstName string `json:"first_name,omitempty"`
+	LastName  string `json:"last_name,omitempty"`
+	PaidShare string `json:"paid_share"`
+	OwedShare string `json:"owed_share"`
+}
+
+type CreateFriendRequest struct {
+	UserEmail     string `json:"user_email"`
+	UserFirstName string `json:"user_first_name,omitempty"`
+	UserLastName  string `json:"user_last_name,omitempty"`
 }
 
 type CreateCommentRequest struct {

@@ -66,6 +66,7 @@ Or copy `.env.example` to `.env` and fill in the values.
 | `splitwisecli user me`                                       | Current user info                    |
 | `splitwisecli user get <id>`                                 | Get user by ID                       |
 | `splitwisecli friend list`                                   | Friends with IDs and balances        |
+| `splitwisecli friend add --email <email>`                    | Add or match a friend by email       |
 | `splitwisecli group list`                                    | All groups                           |
 | `splitwisecli group get <id\|"name">`                        | Group by ID or name                  |
 | `splitwisecli balance`                                       | All friend balances                  |
@@ -86,6 +87,8 @@ Or copy `.env.example` to `.env` and fill in the values.
 | `splitwisecli other categories`                              | List expense categories              |
 
 Global flag: `--json` / `-j` for JSON output.
+
+Friend add uses Splitwise's `create_friend` API. It matches existing users by email or invites new users by email; phone or telephone numbers are not supported by this public API. For new users, include `--first-name` and optionally `--last-name`.
 
 ---
 
@@ -225,7 +228,8 @@ splitwisecli
 │   ├── list          # All groups
 │   └── get           # By ID or name
 ├── friend
-│   └── list          # Friends with IDs and balances
+│   ├── list          # Friends with IDs and balances
+│   └── add           # Add or match by email
 ├── balance           # Balances (--friend, --group)
 ├── expense
 │   ├── list          # List (--group, --friend, --limit)

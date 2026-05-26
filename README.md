@@ -14,7 +14,7 @@ A command-line interface for [Splitwise](https://www.splitwise.com/) — the app
 
 - **User Management**: Get current user and other user info
 - **Group Management**: List groups, get group details
-- **Friend Management**: List friends and balances
+- **Friend Management**: List friends, add friends by email, and view balances
 - **Expense Management**: List, create, get, update, and delete expenses
 - **Comments**: Get and create comments on expenses
 - **Notifications**: View notifications
@@ -105,6 +105,12 @@ cp .env.example .env
 ```bash
 # See your friends (note the IDs for creating expenses)
 splitwisecli friend list
+
+# Add or match a friend by email
+splitwisecli friend add --email ada@example.com
+
+# Invite a new Splitwise user by email (first name is required by Splitwise for new users)
+splitwisecli friend add --email alan@example.org --first-name Alan --last-name Turing
 
 # See your groups (use ID or name)
 splitwisecli group list
@@ -282,7 +288,8 @@ splitwisecli
 │   ├── list      # List all groups
 │   └── get       # Get group by ID or name
 ├── friend        # Friend operations
-│   └── list      # List all friends (with IDs and balances)
+│   ├── list      # List all friends (with IDs and balances)
+│   └── add       # Add or match a friend by email
 ├── balance       # Balance operations
 │   └── (default) # Show balances (--friend, --group)
 ├── expense       # Expense operations
@@ -305,6 +312,14 @@ splitwisecli
 ## Global Flags
 
 - `--json, -j`: Output as JSON
+
+### Friend add flags
+
+- `--email <address>`: Friend email address. Splitwise matches an existing user by email or sends an invitation if the user does not exist.
+- `--first-name <name>`: Friend first name. Splitwise requires this only when inviting a new user.
+- `--last-name <name>`: Friend last name. Optional.
+
+Splitwise's public `create_friend` API does not support adding friends by telephone number. Use an email address with `splitwisecli friend add`.
 
 ### Expense create flags
 
