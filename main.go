@@ -310,8 +310,16 @@ var friendListCmd = &cobra.Command{
 
 var friendAddCmd = &cobra.Command{
 	Use:   "add",
-	Short: "Add a friend by email",
-	Long:  "Adds or matches a Splitwise friend by email using /create_friend. Phone numbers are not supported by the Splitwise friend API.",
+	Short: "Add or match a friend by email",
+	Long:  "Adds or matches a Splitwise friend by email using the official /create_friend API. If the email belongs to an existing Splitwise user, Splitwise matches that user; otherwise it sends an invitation. Phone and telephone numbers are not supported by this public API.",
+	Example: `  # Match an existing Splitwise user by email
+  splitwisecli friend add --email ada@example.com
+
+  # Invite a new user by email
+  splitwisecli friend add --email alan@example.org --first-name Alan --last-name Turing
+
+  # Return the raw Splitwise response
+  splitwisecli --json friend add --email ada@example.com`,
 	Run: func(cmd *cobra.Command, args []string) {
 		req, err := friend.NewAddRequest(friendAddEmail, friendAddFirstName, friendAddLastName)
 		if err != nil {
@@ -348,9 +356,9 @@ var (
 
 func init() {
 	friendCmd.AddCommand(friendListCmd)
-	friendAddCmd.Flags().StringVar(&friendAddEmail, "email", "", "Friend email address")
-	friendAddCmd.Flags().StringVar(&friendAddFirstName, "first-name", "", "Friend first name (required by Splitwise only when inviting a new user)")
-	friendAddCmd.Flags().StringVar(&friendAddLastName, "last-name", "", "Friend last name")
+	friendAddCmd.Flags().StringVar(&friendAddEmail, "email", "", "Friend email address used by Splitwise to match or invite the user")
+	friendAddCmd.Flags().StringVar(&friendAddFirstName, "first-name", "", "Friend first name required by Splitwise when inviting a new user")
+	friendAddCmd.Flags().StringVar(&friendAddLastName, "last-name", "", "Friend last name for a new-user invitation")
 	friendCmd.AddCommand(friendAddCmd)
 }
 
